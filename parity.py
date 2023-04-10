@@ -89,9 +89,9 @@ def parity_check(codeword, parity_type, array_size):
                 if codeword[i][j] == '1':
                     count += 1
             if count % 2 == 0: # Even parity
-                result.append(True)
+                result.append(0)
             else:
-                result.append(False)
+                result.append(-1)
     
     elif parity_type == '2': # 1D-Odd parity
         for i in range(array_size):
@@ -100,22 +100,32 @@ def parity_check(codeword, parity_type, array_size):
                 if codeword[i][j] == '1':
                     count += 1
             if count % 2 == 0: # Even parity
-                result.append(False)
+                result.append(-1)
             else:
-                result.append(True)
+                result.append(0)
     
     elif parity_type == '3': # 2D-Even parity
         row_parity = [sum([int(bit) for bit in row]) % 2 == 0 for row in codeword]
         col_parity = [sum([int(codeword[row][col]) for row in range(array_size)]) % 2 == 0 for col in range(len(codeword[0]))]
         overall_parity = sum(row_parity) + sum(col_parity) == len(row_parity) + len(col_parity)
-        result = [overall_parity] + row_parity + col_parity
+        if overall_parity:
+            result.append(0)
+        else:
+            result.append(-1)
+        result += [0 if parity else -1 for parity in row_parity]
+        result += [0 if parity else -1 for parity in col_parity]
     
     else: # 2D-Odd parity
         row_parity = [sum([int(bit) for bit in row]) % 2 == 1 for row in codeword]
         col_parity = [sum([int(codeword[row][col]) for row in range(array_size)]) % 2 == 1 for col in range(len(codeword[0]))]
         overall_parity = sum(row_parity) + sum(col_parity) == len(row_parity) + len(col_parity)
-        result = [overall_parity] + row_parity + col_parity
-            
+        if overall_parity:
+            result.append(0)
+        else:
+            result.append(-1)
+        result += [0 if parity else -1 for parity in row_parity]
+        result += [0 if parity else -1 for parity in col_parity]
+
     return result
 
 def write2D(data):
