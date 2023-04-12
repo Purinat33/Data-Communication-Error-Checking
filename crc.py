@@ -1,16 +1,16 @@
 import os
 import random
 # For CRC-32
-CRC32_POLY = 0xEDB88320
-CRC32_TABLE = [((CRC32_POLY >> (8*i)) & 0xFF) for i in range(4)]
+CRC32_POLY = 0b11101101101110001000110100000000
+CRC32_TABLE = [((CRC32_POLY >> (8*i)) & 0b11111111) for i in range(4)]
 
 # For CRC-16
-CRC16_POLY = 0x8005
-CRC16_TABLE = [((CRC16_POLY >> (8*i)) & 0xFF) for i in range(2)]
+CRC16_POLY = 0b1000000000000101
+CRC16_TABLE = [((CRC16_POLY >> (8*i)) & 0b11111111) for i in range(2)]
 
 # For CRC-8
-CRC8_POLY = 0x07
-CRC8_TABLE = [((CRC8_POLY >> i) & 0x01) for i in range(8)]
+CRC8_POLY = 0b00000111
+CRC8_TABLE = [((CRC8_POLY >> i) & 0b00000001) for i in range(8)]
 
 def CRC_gen(dataword, crcType):
     crcTable = None
@@ -31,14 +31,14 @@ def CRC_gen(dataword, crcType):
     for b in dataword:
         crc ^= b
         for i in range(8):
-            if (crc & 0x80) != 0:
+            if (crc & 0b10000000) != 0:
                 crc = (crc << 1) ^ crcTable[crcSize - 1]
             else:
                 crc <<= 1
 
     codeword = bytearray(dataword) + bytearray(crcSize)
     for i in range(crcSize):
-        codeword[dataword.__len__() + i] = (crc >> (8 * (crcSize - i - 1))) & 0xFF
+        codeword[dataword.__len__() + i] = (crc >> (8 * (crcSize - i - 1))) & 0b11111111
 
     return bytes(codeword)
 
@@ -62,13 +62,13 @@ def CRC_check(codeword, crcType):
     for i in range(len(codeword) - crcSize):
         crc ^= codeword[i]
         for j in range(8):
-            if (crc & 0x80) != 0:
+            if (crc & 0b10000000) != 0:
                 crc = (crc << 1) ^ crcTable[crcSize - 1]
             else:
                 crc <<= 1
 
     for i in range(crcSize):
-        if codeword[len(codeword) - crcSize + i] != (crc >> (8 * (crcSize - i - 1))) & 0xFF:
+        if codeword[len(codeword) - crcSize + i] != (crc >> (8 * (crcSize - i - 1))) & 0b11111111:
             return -1 # FAIL
 
     return 0 # PASS
