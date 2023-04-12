@@ -1,64 +1,138 @@
-#In this function, the inputs dividend and divisor are binary strings. The function converts them to integers using the int() function with a base of 2 (indicating binary). The division is then performed using the // (floor division) and % (modulus) operators. Finally, the outputs are converted back to binary strings using the bin() function with a slice ([2:]) to remove the "0b" prefix, and padded with zeros using the zfill() method.
-def binary_division(dividend, divisor):
-    """Performs binary division and returns both quotient and remainder"""
-    dividend_str = bin(dividend)[2:]
-    divisor_str = bin(divisor)[2:]
-    divisor_len = len(divisor_str)
-    dividend_len = len(dividend_str)
-    quotient = ''
-    temp = dividend_str[0 : divisor_len - 1]
-    for i in range(divisor_len - 1, dividend_len):
-        if len(temp) > 0 and temp[0] == "1":
-            temp = int(temp, 2) ^ int(divisor_str, 2)
-            temp = bin(temp)[2:]
-            temp = temp.zfill(divisor_len - 1)
-            quotient += '1'
-        else:
-            quotient += '0'
-            temp = temp[1:]
-        if i != dividend_len - 1:
-            temp += dividend_str[i + 1]
-    remainder = int(temp, 2)
-    quotient = '0b' + quotient
-    return (quotient[2:], remainder)
+import os
+import random
+# For CRC-32
+CRC32_POLY = 0xEDB88320
+CRC32_TABLE = [((CRC32_POLY >> (8*i)) & 0xFF) for i in range(4)]
 
+# For CRC-16
+CRC16_POLY = 0x8005
+CRC16_TABLE = [((CRC16_POLY >> (8*i)) & 0xFF) for i in range(2)]
 
-def crc_gen(dataword:str, crc_type:str):
+# For CRC-8
+CRC8_POLY = 0x07
+CRC8_TABLE = [((CRC8_POLY >> i) & 0x01) for i in range(8)]
 
-    temp = dataword    
-    
-    temp = dataword    
-    
-    if crc_type == "CRC-8":
-        #   x^8 +   x^7 +   x^6 +   x^4 +   x^2 +   1
-        #   1       1       10      10      10      1
-        crc8 = "111010101"
-        for i in range(len(crc8) - 1):
-            temp += '0' #Appending for the divisions
-    
-        crc = binary_division(int(dataword, 2), int(crc8, 2))[1]
-        crc_bin = bin(crc)[2:].zfill(8)
-        print("CRC-8:", crc_bin)        
-    elif crc_type == "CRC-16":
-        return 1
+def CRC_gen(dataword, crcType):
+    crcTable = None
+    crcSize = 0
+    if crcType == "CRC-8":
+        crcTable = CRC8_TABLE
+        crcSize = 1
+    elif crcType == "CRC-16":
+        crcTable = CRC16_TABLE
+        crcSize = 2
+    elif crcType == "CRC-32":
+        crcTable = CRC32_TABLE
+        crcSize = 4
     else:
-        return 2
+        raise ValueError("Unsupported CRC type: " + crcType)
+
+    crc = 0
+    for b in dataword:
+        crc ^= b
+        for i in range(8):
+            if (crc & 0x80) != 0:
+                crc = (crc << 1) ^ crcTable[crcSize - 1]
+            else:
+                crc <<= 1
+
+    codeword = bytearray(dataword) + bytearray(crcSize)
+    for i in range(crcSize):
+        codeword[dataword.__len__() + i] = (crc >> (8 * (crcSize - i - 1))) & 0xFF
+
+    return bytes(codeword)
+
+def CRC_check(codeword, crcType):
     
+    crcTable = None
+    crcSize = 0
+    if crcType == "CRC-8":
+        crcTable = CRC8_TABLE
+        crcSize = 1
+    elif crcType == "CRC-16":
+        crcTable = CRC16_TABLE
+        crcSize = 2
+    elif crcType == "CRC-32":
+        crcTable = CRC32_TABLE
+        crcSize = 4
+    else:
+        raise ValueError("Unsupported CRC type: " + crcType)
+
+    crc = 0
+    for i in range(len(codeword) - crcSize):
+        crc ^= codeword[i]
+        for j in range(8):
+            if (crc & 0x80) != 0:
+                crc = (crc << 1) ^ crcTable[crcSize - 1]
+            else:
+                crc <<= 1
+
+    for i in range(crcSize):
+        if codeword[len(codeword) - crcSize + i] != (crc >> (8 * (crcSize - i - 1))) & 0xFF:
+            return -1 # FAIL
+
+    return 0 # PASS
+
+def failTest():
+    print('--------')
+    print('Fail example: ')
+    data = [255, 255, 0]
+    print(f'Dataword: ', list(data))
+    code = CRC_gen(data, "CRC-16")
+    print(f'Codeword: ', list(code))
+    
+    validity = CRC_check(code, "CRC-16")
+    
+    print('Validity: ', "PASS" if validity == 0 else "FAIL")
+    wrong = [255,255,0,0,1]
+    print('Passing a wrong Codeword: ', list(wrong))
+    validity = CRC_check(wrong, "CRC-16")
+    print('Validity: ', "PASS" if validity == 0 else "FAIL")
+
+    
+
+
 def main():
-    datawords = [
-        "11000111",
-        "01011010",
-        "00000011",
-        "11010001",
-        "10001001",
-        "00010100",
-        "10001011",
-        "10010011",
-        "00100000",
-        "11111110"
-    ]
+
+    # Test CRC-8
+    print("Testing CRC-8...")
+    for i in range(10):
+        dataword = bytearray(os.urandom(random.randint(1, 8)))
+        crcType = "CRC-8"
+
+        codeword = CRC_gen(dataword, crcType)
+        validity = CRC_check(codeword, crcType)
+
+        print("Dataword: ", list(dataword))
+        print("Codeword: ", list(codeword))
+        print("Validity: ", "PASS" if validity == 0 else "FAIL")
+
+    # Test CRC-16
+    print("\nTesting CRC-16...")
+    for i in range(10):
+        dataword = bytearray(os.urandom(random.randint(1, 8)))
+        crcType = "CRC-16"
+
+        codeword = CRC_gen(dataword, crcType)
+        validity = CRC_check(codeword, crcType)
+
+        print("Dataword: ", list(dataword))
+        print("Codeword: ", list(codeword))
+        print("Validity: ", "PASS" if validity == 0 else "FAIL")
+
+    # Test CRC-32
+    print("\nTesting CRC-32...")
+    for i in range(10):
+        dataword = bytearray(os.urandom(random.randint(1, 8)))
+        crcType = "CRC-32"
+
+        codeword = CRC_gen(dataword, crcType)
+        validity = CRC_check(codeword, crcType)
+
+        print("Dataword: ", list(dataword))
+        print("Codeword: ", list(codeword))
+        print("Validity: ", "PASS" if validity == 0 else "FAIL")
     
-    for i in range(len(datawords)):
-        print(crc_gen(datawords[i], "CRC-8"))
-    
+    failTest();
+
 main()
